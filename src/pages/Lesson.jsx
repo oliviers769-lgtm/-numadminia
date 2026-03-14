@@ -1,0 +1,187 @@
+import React, { useState } from 'react';
+import AppHeader from '../components/AppHeader';
+
+const MISTRAL_KEY = '1ppX4590CDvOxMNzmx0FzadRBOiTvytH';
+
+const BG = {
+  minHeight: '100vh',
+  backgroundImage: "url('/bg.jpg')",
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundAttachment: 'fixed',
+};
+
+async function getMistralFeedback({ lesson, chosenText, lang }) {
+  const langInstructions = {
+    fr: 'Réponds en français simple et bienveillant.',
+    pt: 'Responde em português europeu simples e encorajador.',
+    ar: 'أجب باللغة العربية البسيطة والمشجعة.',
+  };
+
+  const correctOpt = lesson.options.find(o => o.correct);
+  const prompt = `Tu es un tuteur pédagogique bienveillant pour une app d'aide aux démarches administratives françaises.
+
+Un utilisateur vient de répondre à une question de quiz et s'est trompé.
+
+Question : "${lesson.question}"
+Réponse choisie (incorrecte) : "${chosenText}"
+Bonne réponse : "${correctOpt?.text}"
+Explication de base : "${lesson.explication_reponse}"
+
+${langInstructions[lang] || langInstructions.fr}
+
+En 2-3 phrases maximum, explique pourquoi sa réponse est incorrecte et pourquoi la bonne réponse est juste. Sois encourageant, concis et très accessible (public peu à l'aise avec le numérique). Ne répète pas la question. Commence directement par l'explication.`;
+
+  const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${MISTRAL_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'mistral-small-latest',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 200,
+      temperature: 0.6,
+    }),
+  });
+
+  if (!res.ok) throw new Error('Mistral API error');
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || null;
+}
+
+export default function Lesson({ lesson, moduleId, total, onNavigate, onComplete, large, toggleText, scale = 1, t, isRTL }) {
+  const [answered, setAnswered] = useState(null);
+  const [showExplication, setShowExplication] = useState(false);
+  const [aiExplication, setAiExplication] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const lang = t?.lang || 'fr';
+  const isAr = lang === 'ar';
+  const isWrong = answered && !lesson.options.find(o => o.id === answered)?.correct;
+
+  const handleAnswer = async (opt) => {
+    if (answered) return;
+    setAnswered(opt.id);
+    setTimeout(() => setShowExplication(true), 400);
+
+    if (!opt.correct) {
+      setAiLoading(true);
+      try {
+        const feedback = await getMistralFeedback({ lesson, chosenText: opt.text, lang });
+        setAiExplication(feedback);
+      } catch (e) {
+        setAiExplication(null);
+      } finally {
+        setAiLoading(false);
+      }
+    }
+  };
+
+  const handleNext = () => {
+    const isLast = lesson.numero === total;
+    onComplete(lesson.id, isLast);
+    setAnswered(null);
+    setShowExplication(false);
+    setAiExplication(null);
+    setAiLoading(false);
+  };
+
+  const getState = (opt) => {
+    if (!answered) return 'default';
+    if (opt.correct) return 'correct';
+    if (opt.id === answered && !opt.correct) return 'wrong';
+    return 'default';
+  };
+
+  const renderText = (text) =>
+    text.split('**').map((part, i) =>
+      i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+    );
+
+  const lessonLabel = isAr
+    ? `درس ${lesson.numero} من ${total}`
+    : `${t?.lesson?.lessonOf ? t.lesson.lessonOf.replace('{n}', lesson.numero).replace('{total}', total) : `Leçon ${lesson.numero} sur ${total}`}`;
+  const nextLabel = lesson.numero === total
+    ? (t?.lesson?.finish || '🎉 Terminer le module')
+    : (t?.lesson?.next || 'Leçon suivante →');
+  const backLabel = t?.nav?.back || 'Module';
+
+  const loadingLabel = { fr: "✨ L'IA analyse votre réponse…", pt: '✨ A IA está a analisar a sua resposta…', ar: '✨ الذكاء الاصطناعي يحلل إجابتك…' }[lang] || "✨ L'IA analyse votre réponse…";
+  const aiLabel = { fr: '🤖 Explication personnalisée', pt: '🤖 Explicação personalizada', ar: '🤖 شرح مخصص' }[lang] || '🤖 Explication personnalisée';
+
+  const s = {
+    main: { maxWidth: 680, margin: '0 auto', padding: '1.5rem 1.5rem 6rem' },
+    progress: { background: 'rgba(255,255,255,0.1)', borderRadius: 8, height: 6, marginBottom: 20, overflow: 'hidden' },
+    progressBar: { height: '100%', borderRadius: 8, background: 'linear-gradient(90deg, #F59E0B, #FCD34D)', width: `${Math.round((lesson.numero / total) * 100)}%`, transition: 'width 0.6s ease' },
+    card: { background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)', borderRadius: 24, padding: '2rem', marginBottom: 16, boxShadow: '0 8px 40px rgba(30,58,95,0.2)', animation: 'fadeUp 0.4s ease both' },
+    tag: { display: 'inline-block', background: 'rgba(245,158,11,0.15)', color: '#B45309', fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 16 },
+    title: { fontFamily: 'Fraunces, serif', fontSize: 22, fontWeight: 700, color: '#1E3A5F', marginBottom: 6 },
+    contexte: { background: '#FFF7ED', borderLeft: isAr ? 'none' : '3px solid #F59E0B', borderRight: isAr ? '3px solid #F59E0B' : 'none', borderRadius: isAr ? '12px 0 0 12px' : '0 12px 12px 0', padding: '12px 16px', color: '#374151', fontSize: 14, lineHeight: 1.6, marginBottom: 20, fontStyle: 'italic' },
+    explItem: { display: 'flex', gap: 10, marginBottom: 12, alignItems: 'flex-start' },
+    bullet: { width: 22, height: 22, borderRadius: '50%', background: 'rgba(30,58,95,0.1)', color: '#1E3A5F', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0, marginTop: 2 },
+    explText: { fontSize: 14 * scale, color: '#374151', lineHeight: 1.6 },
+    question: { fontFamily: 'Fraunces, serif', fontSize: 18 * scale, fontWeight: 700, color: '#1E3A5F', marginBottom: 16, marginTop: 24 },
+    optBtn: (state) => ({ width: '100%', padding: '14px 18px', borderRadius: 14, marginBottom: 10, border: `2px solid ${state === 'correct' ? '#10B981' : state === 'wrong' ? '#EF4444' : '#E5E7EB'}`, background: state === 'correct' ? '#F0FDF4' : state === 'wrong' ? '#FEF2F2' : '#FAFAFA', color: '#1F2937', fontSize: 14, fontWeight: 500, cursor: answered ? 'default' : 'pointer', textAlign: isAr ? 'right' : 'left', transition: 'all 0.2s ease' }),
+    explicationBox: { background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 14, padding: '16px', color: '#1E3A5F', fontSize: 14, lineHeight: 1.6, marginTop: 16, animation: 'fadeUp 0.3s ease both' },
+    aiBox: { background: 'linear-gradient(135deg, #F5F3FF, #EDE9FE)', border: '1px solid #C4B5FD', borderRadius: 14, padding: '16px', color: '#4C1D95', fontSize: 14, lineHeight: 1.7, marginTop: 12, animation: 'fadeUp 0.4s ease both' },
+    aiLabel: { fontSize: 11, fontWeight: 700, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8, display: 'block' },
+    aiLoading: { background: 'linear-gradient(135deg, #F5F3FF, #EDE9FE)', border: '1px solid #C4B5FD', borderRadius: 14, padding: '16px', color: '#7C3AED', fontSize: 14, marginTop: 12, animation: 'fadeUp 0.3s ease both', display: 'flex', alignItems: 'center', gap: 10 },
+    spinner: { width: 18, height: 18, border: '2px solid #C4B5FD', borderTop: '2px solid #7C3AED', borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 },
+    nextBtn: { width: '100%', padding: '14px', borderRadius: 14, background: 'linear-gradient(135deg, #1E3A5F, #2A4F7F)', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer', marginTop: 16, boxShadow: '0 4px 16px rgba(30,58,95,0.3)' },
+  };
+
+  return (
+    <div style={{ ...BG, direction: isRTL ? 'rtl' : 'ltr' }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <AppHeader onNavigate={onNavigate} onBack={() => onNavigate('module', moduleId)} backLabel={backLabel} large={large} toggleText={toggleText} t={t} isRTL={isRTL} />
+      <main style={s.main}>
+        <div style={s.progress}><div style={s.progressBar} /></div>
+
+        <div style={s.card}>
+          <div style={s.tag}>{lessonLabel}</div>
+          <h1 style={s.title}>{lesson.titre}</h1>
+          <div style={s.contexte}>💼 {lesson.contexte}</div>
+
+          {lesson.explication.map((item, i) => (
+            <div key={i} style={s.explItem}>
+              <div style={s.bullet}>{i + 1}</div>
+              <div style={s.explText}>{renderText(item)}</div>
+            </div>
+          ))}
+
+          <div style={s.question}>{lesson.question}</div>
+
+          {lesson.options.map(opt => (
+            <button key={opt.id} style={s.optBtn(getState(opt))} onClick={() => handleAnswer(opt)}>
+              {getState(opt) === 'correct' ? '✓ ' : getState(opt) === 'wrong' ? '✗ ' : ''}{opt.text}
+            </button>
+          ))}
+
+          {showExplication && (
+            <>
+              <div style={s.explicationBox}>💡 {lesson.explication_reponse}</div>
+
+              {isWrong && (
+                aiLoading ? (
+                  <div style={s.aiLoading}>
+                    <div style={s.spinner} />
+                    {loadingLabel}
+                  </div>
+                ) : aiExplication ? (
+                  <div style={s.aiBox}>
+                    <span style={s.aiLabel}>{aiLabel}</span>
+                    {aiExplication}
+                  </div>
+                ) : null
+              )}
+
+              <button style={s.nextBtn} onClick={handleNext}>{nextLabel}</button>
+            </>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

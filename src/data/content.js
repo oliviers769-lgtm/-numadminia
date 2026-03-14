@@ -1,0 +1,16 @@
+export const MODULES = [
+  { id: 'courrier',       icon: '📬', title: 'Décoder un courrier officiel', subtitle: 'CAF, CPAM, impôts, mairie',     lessons: 4, color: '#F59E0B' },
+  { id: 'pdf',            icon: '📄', title: 'Remplir un PDF',               subtitle: 'Sans stress, sans erreur',     lessons: 4, color: '#10B981' },
+  { id: 'email',          icon: '✉️', title: 'Les emails',                   subtitle: 'Envoyer, recevoir, organiser', lessons: 4, color: '#3B82F6' },
+  { id: 'dossier',        icon: '📁', title: 'Constituer un dossier',        subtitle: 'Pièces justificatives',        lessons: 4, color: '#8B5CF6' },
+  { id: 'securite',       icon: '🔒', title: 'Sécurité numérique',           subtitle: 'Protéger vos données',         lessons: 4, color: '#EF4444' },
+  { id: 'impots',         icon: '🧾', title: "Déclaration d'impôts",         subtitle: 'impots.gouv.fr pas à pas',     lessons: 4, color: '#F97316' },
+  { id: 'cartevitale',    icon: '💊', title: 'Carte Vitale & Santé',         subtitle: 'Ameli et remboursements',      lessons: 4, color: '#06B6D4' },
+  { id: 'rsacaf',         icon: '🏛️', title: 'Tout sur la CAF',              subtitle: 'RSA, allocations, démarches',  lessons: 4, color: '#10B981' },
+  { id: 'logement',       icon: '🏠', title: 'Logement & APL',               subtitle: 'Demande et aides',             lessons: 4, color: '#8B5CF6' },
+  { id: 'dossiermedical', icon: '🏥', title: 'Dossier médical',              subtitle: 'Mon Espace Santé',             lessons: 4, color: '#EF4444' },
+  { id: 'formation',      icon: '🎓', title: 'Formation professionnelle',    subtitle: 'CPF, Mon Compte Formation',    lessons: 4, color: '#6366F1' },
+  { id: 'permis',         icon: '🚗', title: 'Permis de conduire',           subtitle: 'ANTS, démarches en ligne',     lessons: 4, color: '#84CC16' },
+  { id: 'banque',         icon: '🏦', title: 'Compte bancaire',              subtitle: 'Ouvrir, gérer, vos droits',    lessons: 4, color: '#F59E0B' },
+  { id: 'smartphone',     icon: '📱', title: 'Smartphone pour débutants',    subtitle: 'Appels, applis, sécurité',     lessons: 4, color: '#EC4899' },
+];
